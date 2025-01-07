@@ -1,0 +1,155 @@
+import React, { useState } from "react";
+
+export default function MainUi() {
+  const [videoFile, setVideoFile] = useState(null);
+  const [uploadedFilename, setUploadedFilename] = useState("");
+  const [prompts, setPrompts] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [downloadLink, setDownloadLink] = useState("");
+
+  // STEP 1: Upload the video
+  const handleUpload = async () => {
+    if (!videoFile) {
+      setMessage("Please select a video file first.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("Uploading video...");
+    setDownloadLink("");
+
+    try {
+      // Send the file to /upload endpoint
+      const formData = new FormData();
+      formData.append("file", videoFile);
+
+      const response = await fetch("http://localhost:5000/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) throw new Error("Failed to upload video");
+
+      const data = await response.json();
+      if (data.error) {
+        setMessage("Error: " + data.error);
+      } else {
+        // Save the filename returned by the server
+        setUploadedFilename(data.filename);
+        setMessage("Video uploaded successfully! Ready to process frames.");
+      }
+    } catch (error) {
+      console.error("Error uploading video:", error);
+      setMessage("Error uploading video. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // STEP 2: Process the already uploaded video with multiple prompts
+  const handleProcess = async () => {
+    if (!uploadedFilename) {
+      setMessage("No uploaded video found. Upload first, then process.");
+      return;
+    }
+    if (!prompts.trim()) {
+      setMessage("Please enter one or more prompts (e.g. 'person,dog').");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("Processing video, please wait...");
+    setDownloadLink("");
+
+    try {
+      // Split prompts by comma
+      const promptsArray = prompts.split(",").map((p) => p.trim()).filter(Boolean);
+
+      // Call /process with JSON
+      const response = await fetch("http://localhost:5000/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: uploadedFilename,
+          prompts: promptsArray, 
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to process video.");
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        setMessage("Error: " + data.error);
+      } else {
+        setMessage("Video processed successfully!");
+        // Show a link to the processed video
+        setDownloadLink(data.download_url);
+      }
+    } catch (error) {
+      console.error("Error processing video:", error);
+      setMessage("Error processing video. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle file input
+  const handleFileChange = (e) => {
+    setVideoFile(e.target.files[0]);
+    setUploadedFilename("");
+    setDownloadLink("");
+    setMessage("");
+  };
+
+  return (
+    <div className="container">
+      <h1>Upload & Process Video</h1>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <input 
+          type="file" 
+          accept="video/*" 
+          onChange={handleFileChange} 
+        />
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <button onClick={handleUpload} disabled={loading}>
+          {loading ? "Please wait..." : "Upload Video"}
+        </button>
+      </div>
+
+      {/* Only show the prompts input & "Process" button if upload succeeded */}
+      {uploadedFilename && (
+        <div style={{ marginBottom: "1rem" }}>
+          <input
+            type="text"
+            placeholder="Enter prompts (e.g. 'person,dog')"
+            value={prompts}
+            onChange={(e) => setPrompts(e.target.value)}
+          />
+          <button onClick={handleProcess} disabled={loading}>
+            {loading ? "Processing..." : "Find/Extract Frames"}
+          </button>
+        </div>
+      )}
+
+      <p>{message}</p>
+
+      {/* Show a "Download" link only once we have a processed video link */}
+      {downloadLink && (
+        <div>
+          <a 
+            href={downloadLink} 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            Download Processed Video
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}

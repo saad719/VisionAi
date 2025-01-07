@@ -1,0 +1,273 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FaUpload } from "react-icons/fa"; // For upload icon
+import "../styles.css"; // Ensure you have styles defined for sidebar and content
+
+export default function MainUi() {
+  const [videoFile, setVideoFile] = useState(null);
+  const [uploadedFilename, setUploadedFilename] = useState("");
+  const [prompts, setPrompts] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [downloadLink, setDownloadLink] = useState("");
+  const navigate = useNavigate();
+
+  // STEP 1: Upload the video
+  const handleUpload = async () => {
+    if (!videoFile) {
+      setMessage("Please select a video file first.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("Uploading video...");
+    setDownloadLink("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", videoFile);
+
+      const response = await fetch("http://localhost:5000/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) throw new Error("Failed to upload video");
+
+      const data = await response.json();
+      if (data.error) {
+        setMessage("Error: " + data.error);
+      } else {
+        setUploadedFilename(data.filename);
+        setMessage("Video uploaded successfully! Ready to process frames.");
+      }
+    } catch (error) {
+      console.error("Error uploading video:", error);
+      setMessage("Error uploading video. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // STEP 2: Process the video with prompts
+  const handleProcess = async () => {
+    if (!uploadedFilename) {
+      setMessage("No uploaded video found. Upload first, then process.");
+      return;
+    }
+    if (!prompts.trim()) {
+      setMessage("Please enter one or more prompts (e.g. 'person,dog').");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("Processing video, please wait...");
+    setDownloadLink("");
+
+    try {
+      const promptsArray = prompts.split(",").map((p) => p.trim()).filter(Boolean);
+
+      const response = await fetch("http://localhost:5000/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: uploadedFilename,
+          prompts: promptsArray,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to process video.");
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        setMessage("Error: " + data.error);
+      } else {
+        setMessage("Video processed successfully!");
+        setDownloadLink(data.download_url);
+      }
+    } catch (error) {
+      console.error("Error processing video:", error);
+      setMessage("Error processing video. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle file input
+  const handleFileChange = (e) => {
+    setVideoFile(e.target.files[0]);
+    setUploadedFilename("");
+    setDownloadLink("");
+    setMessage("");
+  };
+
+  return (
+    <div className="start-screen">
+      {/* Left Sidebar */}
+      <aside className="sidebar">
+        <button className="sidebar-button" onClick={() => navigate("/main")}>
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/unify-v3-copy.appspot.com/o/oda0auxt2r-13%3A374?alt=media&token=3c90f807-953c-4370-bbe2-35f4640197d9"
+            alt="New Chat"
+            className="plus"
+          />
+          <span> New Chat</span>
+        </button>
+        <hr className="divider" />
+        <button className="sidebar-button">
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/unify-v3-copy.appspot.com/o/oda0auxt2r-104%3A64?alt=media&token=478b81a3-1683-4ce3-b80a-754786bef7b3"
+            alt="Clear Conversations"
+            className="delete"
+          />
+          <span> Clear Conversations</span>
+        </button>
+        <button className="sidebar-button" onClick={() => navigate("/")}>
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/unify-v3-copy.appspot.com/o/oda0auxt2r-104%3A46?alt=media&token=8304a27b-2f46-4b1d-b3e5-b1573ea9a266"
+            alt="Log Out"
+            className="logout"
+          />
+          <span> Log Out</span>
+        </button>
+      </aside>
+
+      {/* Main Content */}
+      <main className="content">
+        <div className="container" style={styles.container}>
+          <h1>Upload & Process Video</h1>
+
+          {/* File upload area */}
+          <div
+            style={styles.uploadContainer}
+            onClick={() => document.getElementById("fileInput").click()}
+          >
+            {videoFile ? (
+              <div style={styles.fileName}>{videoFile.name}</div>
+            ) : (
+              <>
+                <FaUpload size={30} style={styles.uploadIcon} />
+                <div>Click or Drag to Upload Video</div>
+              </>
+            )}
+            <input
+              id="fileInput"
+              type="file"
+              accept="video/*"
+              onChange={handleFileChange}
+              style={{ display: "none" }}
+            />
+          </div>
+
+          {/* Upload button */}
+          <div style={{ marginBottom: "1rem" }}>
+            <button onClick={handleUpload} disabled={loading} style={styles.uploadButton}>
+              {loading ? "Please wait..." : "Upload Video"}
+            </button>
+          </div>
+
+          {/* Prompts input & process video */}
+          {uploadedFilename && (
+            <div style={styles.promptContainer}>
+              <input
+                type="text"
+                placeholder="Enter prompts (e.g. 'person,dog')"
+                value={prompts}
+                onChange={(e) => setPrompts(e.target.value)}
+                style={styles.promptInput}
+              />
+              <button
+                onClick={handleProcess}
+                disabled={loading}
+                style={styles.processButton}
+              >
+                {loading ? "Processing..." : "Find/Extract Frames"}
+              </button>
+            </div>
+          )}
+
+          <p>{message}</p>
+
+          {/* Show a "Download" link if video processing is done */}
+          {downloadLink && (
+            <div>
+              <a
+                href={downloadLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.downloadLink}
+              >
+                Download Processed Video
+              </a>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// Styles for the page
+const styles = {
+  container: {
+    width: "100%",
+    maxWidth: "600px",
+    margin: "0 auto",
+    padding: "20px",
+    fontFamily: "Arial, sans-serif",
+    textAlign: "center",
+  },
+  uploadContainer: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "20px",
+    border: "2px dashed #ccc",
+    borderRadius: "10px",
+    cursor: "pointer",
+    marginBottom: "1rem",
+  },
+  uploadIcon: {
+    color: "#4a90e2",
+  },
+  fileName: {
+    fontSize: "14px",
+    color: "#4a90e2",
+    marginTop: "10px",
+  },
+  uploadButton: {
+    padding: "10px 20px",
+    backgroundColor: "#4a90e2",
+    color: "#fff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontSize: "16px",
+  },
+  promptContainer: {
+    marginBottom: "1rem",
+  },
+  promptInput: {
+    width: "100%",
+    padding: "10px",
+    fontSize: "16px",
+    border: "1px solid #ccc",
+    borderRadius: "5px",
+    marginBottom: "10px",
+  },
+  processButton: {
+    padding: "10px 20px",
+    backgroundColor: "#4a90e2",
+    color: "#fff",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+    fontSize: "16px",
+  },
+  downloadLink: {
+    color: "#4a90e2",
+    fontSize: "16px",
+    textDecoration: "none",
+  },
+};
