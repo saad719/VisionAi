@@ -1,9 +1,12 @@
 import os
 import uuid  # for generating unique processed file names
+import base64  # <-- Add this import
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import cv2
 import numpy as np
+from datetime import datetime  # For adding timestamp
+import datetime  # for timedelta
 
 app = Flask(__name__)
 CORS(app)
@@ -75,25 +78,52 @@ def process_video():
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             return jsonify({"error": "Could not open the video file."}), 400
-
+        fps = cap.get(cv2.CAP_PROP_FPS)  # Get video frame rate (fps)
         processed_frames = []
         frame_count = 0
         skip_interval = 5
+        frame_data = []  # To store base64-encoded frames
+        selected_frames = 0  # To track how many frames we have processed
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        # Calculate the step size to pick 10 evenly distributed frames
+        
+        frame_step = total_frames // 10
 
-        while cap.isOpened():
+        frame_data = []  # To store base64-encoded frames
+        selected_frames = 0  # To count the selected frames
+
+# Process frames
+        frame_count = 0
+        while cap.isOpened() and selected_frames < 10:
             ret, frame = cap.read()
             if not ret:
                 break
             frame_count += 1
 
             # For speed, only detect on every nth frame
-            if frame_count % skip_interval == 0:
+            if frame_count % frame_step == 0:
                 # DETECT for MULTIPLE PROMPTS
                 detections = detect_objects_multi_prompts(frame, prompts)
                 for (x, y, w, h) in detections:
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-            processed_frames.append(frame)
+                # Calculate timestamp based on frame number and fps
+                timestamp_sec = frame_count / fps  # seconds
+                timestamp = str(datetime.timedelta(seconds=timestamp_sec))
+
+                # Add timestamp text on the frame
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(frame, timestamp, (10, 30), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
+
+                # Convert frame to base64
+                _, buffer = cv2.imencode('.jpg', frame)
+                encoded_frame = base64.b64encode(buffer).decode('utf-8')  # Base64-encoded frame
+                frame_data.append(f"data:image/jpeg;base64,{encoded_frame}")
+                selected_frames += 1
+
+            # Skip some frames to ensure we're selecting 10 in total
+            if selected_frames >= 10:
+                break
 
         cap.release()
 
@@ -104,13 +134,13 @@ def process_video():
 
         return jsonify({
             "message": "Processing complete",
-            "download_url": f"http://localhost:5000/output/{out_name}"
+            "download_url": f"http://localhost:5000/output/{out_name}",
+            "frames": frame_data  # Return base64 frames
         })
 
     except Exception as e:
         print("Error in /process:", str(e))
         return jsonify({"error": "An error occurred"}), 500
-
 
 def detect_objects_multi_prompts(frame, prompts):
     """

@@ -15,6 +15,7 @@ export default function MainUi() {
   const chatRef = useRef(null);
   const navigate = useNavigate();
 
+  // Scroll to the bottom of the chat after each message
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -106,8 +107,7 @@ export default function MainUi() {
             type: "processed",
             content: "Processed Video",
             downloadLink: data.download_url,
-            frames: data.frames,
-            timestamps: data.timestamps,
+            frames: data.frames || [],
           },
         ]);
       }
@@ -146,7 +146,6 @@ export default function MainUi() {
                     <a href={frame} target="_blank" rel="noopener noreferrer">
                       <img src={frame} alt={`Frame ${i + 1}`} className="frame-thumbnail" />
                     </a>
-                    <p>Timestamp: {msg.timestamps[i]}</p>
                   </div>
                 ))}
               </div>

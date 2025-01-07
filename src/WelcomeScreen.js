@@ -6,12 +6,8 @@ export default function WelcomeScreen() {
   const navigate = useNavigate();
 
   return (
-    <div className="container">
-      <img
-        src="https://via.placeholder.com/100"
-        alt="VisionAI Logo"
-        className="logo"
-      />
+    <div className="sign">
+      <div className="logo"></div>
       <h1>Welcome to VisionAI</h1>
       <p>Log in with your account to continue</p>
       <button onClick={() => navigate("/login")}>Log In</button>

@@ -68,7 +68,8 @@ body {
 .chat-body {
   flex-grow: 1; /* Fill available space */
   overflow-y: auto; /* Scrollable content */
-  padding: 20px;
+  padding: 10px;
+  background-color: #000000;
 }
 
 .chat-footer {
@@ -140,4 +141,32 @@ body {
 
 .chat-message.file:hover {
   text-decoration: underline;
+}
+.frames-container {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap; /* Allows frames to wrap to the next line */
+  justify-content: center; /* Center images */
+}
+
+/* Individual frame item */
+.frame-item {
+  margin-right: 15px; /* Space between images */
+  margin-bottom: 15px; /* Space between rows */
+  width: auto; /* Allow dynamic width based on the image */
+  height: auto; /* Maintain aspect ratio */
+}
+
+/* Frame thumbnail (image) */
+.frame-thumbnail {
+  width: 250px; /* Increase the width */
+  height: auto; /* Maintain aspect ratio */
+  border-radius: 5px; /* Optional: rounded corners */
+  object-fit: cover; /* Ensures the image covers the thumbnail area without distortion */
+}
+
+/* Optionally add a border or shadow to make the images stand out */
+.frame-thumbnail {
+  border: 2px solid #444;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }

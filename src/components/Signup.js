@@ -18,7 +18,7 @@ export default function Signup() {
   };
 
   return (
-    <div className="container">
+    <div className="sign">
       <img
         src="https://via.placeholder.com/100"
         alt="VisionAI Logo"

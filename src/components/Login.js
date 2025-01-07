@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-
+import "../styles.css";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +22,7 @@ export default function Login() {
   };
 
   return (
-    <div className="container">
+    <div className="sign">
       <h1>Welcome Back</h1>
       {error && <p style={{ color: "red" }}>{error}</p>}
       <input
